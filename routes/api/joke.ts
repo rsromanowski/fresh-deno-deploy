@@ -1,4 +1,5 @@
 import { HandlerContext } from "$fresh/server.ts";
+import { db } from "../../db/db.ts";
 
 // Jokes courtesy of https://punsandoneliners.com/randomness/programmer-jokes/
 const JOKES = [
@@ -17,5 +18,6 @@ const JOKES = [
 export const handler = (_req: Request, _ctx: HandlerContext): Response => {
   const randomIndex = Math.floor(Math.random() * JOKES.length);
   const body = JOKES[randomIndex];
+  db.createJoke(body);
   return new Response(body);
 };
