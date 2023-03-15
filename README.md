@@ -1,5 +1,7 @@
 # fresh project
 
+See project at [Deno Deploy](https://dash.deno.com/projects/fresh-deno-deploy)
+
 ### Usage
 
 Start the project:

@@ -7,4 +7,9 @@
 import { start } from "$fresh/server.ts";
 import manifest from "./fresh.gen.ts";
 
+import { db } from "./db/db.ts";
+
+// Connect and init database
+await db.init();
+
 await start(manifest, { port: 3000 });

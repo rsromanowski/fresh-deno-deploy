@@ -1,5 +1,7 @@
 import { HandlerContext } from "$fresh/server.ts";
 
+import { db } from "../../db/db.ts";
+
 // Jokes courtesy of https://punsandoneliners.com/randomness/programmer-jokes/
 const JOKES = [
   "Why do Java developers often wear glasses? They can't C#.",
@@ -14,8 +16,14 @@ const JOKES = [
   "An SEO expert walked into a bar, pub, inn, tavern, hostelry, public house.",
 ];
 
-export const handler = (_req: Request, _ctx: HandlerContext): Response => {
+export const handler = async (
+  _req: Request,
+  _ctx: HandlerContext
+): Promise<Response> => {
   const randomIndex = Math.floor(Math.random() * JOKES.length);
   const body = JOKES[randomIndex];
+
+  await db.createJoke(body);
+
   return new Response(body);
 };
