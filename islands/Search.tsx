@@ -1,47 +1,34 @@
 import { useState } from "preact/hooks";
 import { JSX } from "preact/jsx-runtime";
+import { League, LeagueUser, User } from "../api/sleeper/types.ts";
 import { Avatar } from "../components/Avatar.tsx";
 import { Button } from "../components/Button.tsx";
-
-interface User {
-  username: string;
-  user_id: string;
-  display_name: string;
-  avatar: string;
-}
-
-interface League {
-  "total_rosters": number;
-  "status": string; // "pre_draft"; // can also be "drafting", "in_season", or "complete"
-  "sport": string; // nfl
-  // "settings": { settings object },
-  "season_type": string; // "regular";
-  "season": string; // "2018";
-  // "scoring_settings": { scoring_settings object },
-  // "roster_positions": [ roster positions array ],
-  "previous_league_id": string; // "198946952535085056";
-  "name": string; // "Sleeperbot Friends League";
-  "league_id": string; // "289646328504385536";
-  "draft_id": string; // "289646328508579840";
-  "avatar": string; // "efaefa889ae24046a53265a3c71b8b64";
-}
-
-interface LeagueUser {
-  "user_id": string;
-  "username": string;
-  "display_name": string;
-  "avatar": string;
-  "metadata": {
-    "team_name": string;
-  };
-  "is_owner": boolean; // is commissioner (there can be multiple commissioners)
-}
+import { Sleeper } from "../api/sleeper/client.ts";
+import { UserCard } from "../components/UserCard.tsx";
 
 export default function Search() {
   const [username, setUsername] = useState("rsr16");
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setCurrentUser] = useState<User | null>(null);
   const [leagues, setLeagues] = useState<League[]>([]);
   const [leagueUsers, setLeagueUsers] = useState<LeagueUser[]>([]);
+
+  const [userMap, setUserMap] = useState<Map<string, User>>(new Map());
+  const [leagueMap, setLeagueMap] = useState<Map<string, League>>(new Map());
+
+  function saveUser(user: User) {
+    setUserMap(userMap.set(user.user_id, user));
+  }
+  async function saveCurrentUser(user: User) {
+    setCurrentUser(user);
+
+    const leagues = await Sleeper.getLeaguesForUser(user.user_id);
+    leagues.forEach((l) => saveLeague(l));
+    setLeagues(leagues);
+  }
+
+  function saveLeague(league: League) {
+    setLeagueMap(leagueMap.set(league.league_id, league));
+  }
 
   const onInput = (
     { currentTarget }: JSX.TargetedEvent<HTMLInputElement, Event>,
@@ -50,56 +37,78 @@ export default function Search() {
   };
 
   return (
-    <div>
-      <input value={username} onInput={onInput} />
-      <Button
-        onClick={async () => {
-          const getUserUrl = `https://api.sleeper.app/v1/user/${username}`;
-          const response = await fetch(getUserUrl);
-          const user = await response.json() as User;
-          setUser(user);
+    <div
+      style={{
+        display: "grid",
+        "grid-template-columns": "20% 20% 20% 20% 20%",
+      }}
+    >
+      <div>
+        {user && <UserCard user={user} saveCurrentUser={saveCurrentUser} />}
 
-          const getLeaguesUrl =
-            `https://api.sleeper.app/v1/user/${user?.user_id}/leagues/nfl/2022`;
+        <input value={username} onInput={onInput} />
 
-          const response2 = await fetch(getLeaguesUrl);
-          const leagues = await response2.json() as League[];
-          setLeagues(leagues);
-        }}
-      >
-        Search
-      </Button>
+        <Button
+          onClick={async () => {
+            // Clear maps on new search
+            setUserMap(new Map());
+            setLeagueMap(new Map());
+            setLeagueUsers([]);
 
-      {user && (
-        <div>
-          <Avatar avatar_id={user?.avatar!} />
-          <span>{user.display_name}</span>
-        </div>
-      )}
-      <ol>
-        {leagues.map((league) => (
-          <li>
-            {league.name}
-            <Button
-              onClick={async () => {
-                const getLeagueUsersUrl =
-                  `https://api.sleeper.app/v1/league/${league.league_id}/users`;
+            const user = await Sleeper.getUser(username);
+            saveCurrentUser(user);
+            saveUser(user);
+          }}
+        >
+          Search
+        </Button>
+      </div>
 
-                const response = await fetch(getLeagueUsersUrl);
-                const leagueUsers = await response.json() as LeagueUser[];
-                setLeagueUsers(leagueUsers);
-              }}
-            >
-              More
-            </Button>
-          </li>
-        ))}
-      </ol>
-      <ol>
-        {leagueUsers.map((user) => (
-          <li>{user.metadata.team_name ?? "--"} ({user.display_name})</li>
-        ))}
-      </ol>
+      <div>
+        <ol>
+          {leagues.map((league) => (
+            <li>
+              {league.name}
+              <Button
+                onClick={async () => {
+                  const leagueUsers = await Sleeper.getLeagueUsers(
+                    league.league_id,
+                  );
+                  leagueUsers.forEach((u) => saveUser(u));
+                  setLeagueUsers(leagueUsers);
+                }}
+              >
+                More
+              </Button>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div>
+        <ol>
+          {leagueUsers.map((user) => (
+            <li>{user.metadata.team_name ?? "--"} ({user.display_name})</li>
+          ))}
+        </ol>
+      </div>
+
+      <div>
+        <ol>
+          {[...userMap.entries()].map(([_, user]) => (
+            <li>
+              <UserCard user={user} saveCurrentUser={saveCurrentUser} />
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div>
+        <ol>
+          {[...leagueMap.entries()].map(([id, league]) => (
+            <li>{league.name} ({id})</li>
+          ))}
+        </ol>
+      </div>
     </div>
   );
 }
