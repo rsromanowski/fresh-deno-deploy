@@ -40,7 +40,8 @@ export default function Search() {
     <div
       style={{
         display: "grid",
-        "grid-template-columns": "20% 20% 20% 20% 20%",
+        "grid-template-columns": "repeat(auto-fit, minmax(320px, 1fr))",
+        //"grid-template-columns": "minmax(300px, 20%) 20% 20% 20% 20%",
       }}
     >
       <div>
@@ -102,13 +103,15 @@ export default function Search() {
           ))}
         </ol>
       </div>
-      <div>
+      {
+        /* <div>
         <ol>
           {[...leagueMap.entries()].map(([id, league]) => (
             <li>{league.name} ({id})</li>
           ))}
         </ol>
-      </div>
+      </div> */
+      }
     </div>
   );
 }
